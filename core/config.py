@@ -15,8 +15,11 @@ class Config:
     USER_PHONE: str = os.getenv("USER_PHONE", "")  # E.164 format: +919xxxxxxxxx
 
     # API keys
-    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     NOTION_TOKEN: str = os.getenv("NOTION_TOKEN", "")
+
+    # Ollama (local LLM — no API key needed)
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+    OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
     # Paths
     CHROMA_PATH: str = str(DATA_DIR / "chroma")
@@ -45,9 +48,6 @@ class Config:
 
     # Meeting
     PRE_MEETING_BRIEF_MINUTES: int = 5
-
-    # Claude
-    CLAUDE_MODEL: str = "claude-sonnet-4-6"
 
     # Notion
     NOTION_DATABASE_ID: str = os.getenv("NOTION_DATABASE_ID", "")

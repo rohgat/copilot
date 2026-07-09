@@ -22,7 +22,7 @@ Real-time AI layer for every call. Detects when you're addressed, retrieves cont
 
 - macOS (Apple Silicon M-series)
 - [BlackHole 2ch](https://existentialcrisis.com/blackhole) — virtual audio driver
-- Anthropic API key
+- [Ollama](https://ollama.com) — local LLM runner (no API key, runs on-device)
 - Notion integration token
 - Google Calendar OAuth credentials
 - WhatsApp personal number
@@ -46,13 +46,12 @@ This installs Python 3.12, Node.js, all dependencies, and creates your `.env`.
 ```
 USER_NAME=Rohit
 USER_PHONE=+919xxxxxxxxx
-ANTHROPIC_API_KEY=sk-ant-...
 NOTION_TOKEN=ntn_...
 ```
 
-Get keys from:
-- Anthropic: [console.anthropic.com](https://console.anthropic.com)
-- Notion: [notion.so/my-integrations](https://www.notion.so/my-integrations) → New integration → copy token → share your workspace page with the integration
+Get your Notion token at [notion.so/my-integrations](https://www.notion.so/my-integrations) → New integration → copy token → share your workspace page with the integration.
+
+> **LLM runs locally via Ollama** — no API key needed. The setup script installs Ollama and pulls `llama3.1:8b` (~5 GB, one-time download). Swap to `qwen2.5:14b` in `.env` for better quality if you have the RAM.
 
 ### 3. Audio setup (BlackHole)
 

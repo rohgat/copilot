@@ -3,7 +3,7 @@ import asyncio
 import json
 import time
 from typing import Optional, List
-import anthropic
+import ollama
 from .models import TranscriptChunk, TriggerEvent
 from .config import config
 
@@ -32,10 +32,9 @@ Rules:
 
 
 class Detector:
-    """Monitors transcript stream for name + intent triggers using Claude."""
+    """Monitors transcript stream for name + intent triggers using Ollama."""
 
     def __init__(self):
-        self._client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
         self._queue: asyncio.Queue = asyncio.Queue()
         self._buffer: List[str] = []
         self._task: Optional[asyncio.Task] = None
@@ -74,23 +73,25 @@ class Detector:
 
             window = "\n".join(self._buffer[-12:])
             event = await loop.run_in_executor(
-                None, self._call_claude, window, meeting_id
+                None, self._call_llm, window, meeting_id
             )
             if event:
                 self._last_trigger_time = now
                 await self._queue.put(event)
 
-    def _call_claude(self, window: str, meeting_id: str) -> Optional[TriggerEvent]:
+    def _call_llm(self, window: str, meeting_id: str) -> Optional[TriggerEvent]:
         system = _SYSTEM.format(user_name=config.USER_NAME)
         prompt = f"Meeting transcript (most recent at bottom):\n\n{window}\n\nDoes this transcript contain a trigger directed at {config.USER_NAME}?"
         try:
-            resp = self._client.messages.create(
-                model=config.CLAUDE_MODEL,
-                max_tokens=300,
-                system=system,
-                messages=[{"role": "user", "content": prompt}],
+            resp = ollama.chat(
+                model=config.OLLAMA_MODEL,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                format="json",
             )
-            data = json.loads(resp.content[0].text)
+            data = json.loads(resp['message']['content'])
             if (
                 data.get("triggered")
                 and data.get("confidence", 0) >= config.DETECTION_CONFIDENCE_THRESHOLD

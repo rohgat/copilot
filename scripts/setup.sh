@@ -30,7 +30,27 @@ if ! system_profiler SPAudioDataType 2>/dev/null | grep -q "BlackHole"; then
   echo ""
 fi
 
-# 4. Python venv
+# 4. Ollama (local LLM — no API key required)
+if ! command -v ollama &>/dev/null; then
+  echo "📦 Installing Ollama..."
+  brew install ollama
+fi
+echo "✅ Ollama: $(ollama --version 2>/dev/null || echo 'installed')"
+
+# Pull default model if not already present
+if ! ollama list 2>/dev/null | grep -q "llama3.1:8b"; then
+  echo "📥 Pulling llama3.1:8b (one-time, ~5GB)..."
+  ollama pull llama3.1:8b
+fi
+echo "✅ Ollama model ready (llama3.1:8b)"
+
+# Start Ollama service if not running
+if ! curl -s http://localhost:11434/api/tags &>/dev/null; then
+  echo "🚀 Starting Ollama service..."
+  brew services start ollama
+fi
+
+# 5. Python venv
 if [ ! -d ".venv" ]; then
   echo "📦 Creating Python virtual environment..."
   python3.12 -m venv .venv
@@ -56,8 +76,7 @@ echo "✅ Node dependencies installed"
 if [ ! -f ".env" ]; then
   cp .env.example .env
   echo ""
-  echo "📝 Created .env — fill in your API keys:"
-  echo "   ANTHROPIC_API_KEY  → console.anthropic.com"
+  echo "📝 Created .env — fill in your details:"
   echo "   NOTION_TOKEN       → notion.so/my-integrations"
   echo "   USER_PHONE         → your number in +91xxxxxxxxxx format"
   echo "   USER_NAME          → your first name (used for detection)"

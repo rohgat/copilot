@@ -1,5 +1,6 @@
 from __future__ import annotations
-import anthropic
+import json
+import ollama
 from typing import List, Optional
 from .models import MeetingSession, MeetingSummary, TriggerEvent
 from .config import config
@@ -62,8 +63,15 @@ Produce a summary in JSON:
 class Summarizer:
     """Generates meeting summaries, catch-ups, suggestions, and weekly digests."""
 
-    def __init__(self):
-        self._client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    def _chat(self, prompt: str, max_tokens: int = 1000, as_json: bool = False) -> str:
+        kwargs = dict(
+            model=config.OLLAMA_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if as_json:
+            kwargs["format"] = "json"
+        resp = ollama.chat(**kwargs)
+        return resp['message']['content']
 
     def end_of_meeting(self, session: MeetingSession) -> MeetingSummary:
         transcript = session.full_transcript_text()
@@ -87,16 +95,11 @@ class Summarizer:
             attendees=", ".join(session.attendees) or "Unknown",
             transcript=transcript[:12000],
         )
-        import json
-        resp = self._client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        text = self._chat(prompt, as_json=True)
         try:
-            data = json.loads(resp.content[0].text)
+            data = json.loads(text)
         except json.JSONDecodeError:
-            data = {"summary": resp.content[0].text, "key_decisions": [], "action_items": [], "my_action_items": []}
+            data = {"summary": text, "key_decisions": [], "action_items": [], "my_action_items": []}
 
         catchup = None
         if session.joined_late and session.late_join_index > 0:
@@ -126,12 +129,7 @@ class Summarizer:
             title=session.title,
             transcript_before=before[:8000],
         )
-        resp = self._client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text.strip()
+        return self._chat(prompt).strip()
 
     def generate_suggestion(self, event: TriggerEvent, context: List[str]) -> str:
         context_text = "\n".join(f"- {c}" for c in context[:5]) if context else "No relevant past context found."
@@ -141,12 +139,7 @@ class Summarizer:
             speaker=event.speaker,
             context=context_text,
         )
-        resp = self._client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text.strip()
+        return self._chat(prompt).strip()
 
     def pre_meeting_brief(self, title: str, attendees: List[str], description: str, past_context: List[str]) -> str:
         context_text = "\n".join(f"- {c}" for c in past_context[:8]) if past_context else "No past meeting history with these attendees."
@@ -167,15 +160,9 @@ Write a brief (4-6 bullet points) covering:
 
 Plain text with • bullet points."""
 
-        resp = self._client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text.strip()
+        return self._chat(prompt).strip()
 
     def weekly_digest(self, summaries: List[MeetingSummary]) -> str:
-        import json
         if not summaries:
             return "No meetings this week."
 
@@ -191,12 +178,8 @@ Plain text with • bullet points."""
             user_name=config.USER_NAME,
             meetings_text=meetings_text[:10000],
         )
-        resp = self._client.messages.create(
-            model=config.CLAUDE_MODEL,
-            max_tokens=800,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        text = self._chat(prompt, as_json=True)
         try:
-            return json.loads(resp.content[0].text)
+            return json.loads(text)
         except json.JSONDecodeError:
-            return resp.content[0].text
+            return text
